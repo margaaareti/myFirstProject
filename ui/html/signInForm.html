@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport"
+        content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>Auth</title>
+</head>
+<body>
+
+<form method="POST" action="http://localhost:8000/auth/sign-in">
+  <div>
+    <label id="e" for="username">Username</label>
+    <input type="text" id="username" name="username" required>
+  </div>
+  <div>
+    <label id="f" for="password">Password</label>
+    <input type="text" id="password" name="password" required>
+  </div>
+  <button type = "submit">Отправить</button>
+</form>
+
+
+
+</body>
+</html>

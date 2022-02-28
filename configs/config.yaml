@@ -1,0 +1,16 @@
+port: "8000"
+
+
+db:
+  username: "postgres"
+  host: "localhost"
+  port: 5432
+  password: "qwerty"
+  dbname: "postgres"
+  sslmode: "disable"
+
+
+email:
+  myEmail: "vladislav-an0@rambler.ru"
+  password: "XGRN55DJH55"
+ 

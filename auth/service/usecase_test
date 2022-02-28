@@ -1,0 +1,44 @@
+package service
+
+import (
+	"Test_derictory/auth/repository/mock"
+	"Test_derictory/models"
+	"context"
+	"github.com/stretchr/testify/assert"
+	"testing"
+)
+
+func TestAuthFlow(t *testing.T) {
+
+	repo := new(mock.UserRepositoryMock)
+
+	uc := NewAuthUseCase(repo)
+
+	var (
+		username = "Test"
+		password = " 1"
+
+		user  = models.User2{Name: "testing", Username: "Test", Password: GeneratePasswordHash("1"), Email: "name@name.test"}
+		ctx   = context.Background()
+		user2 = &models.User2{Name: "testing", Username: "Test", Password: GeneratePasswordHash("1"), Email: "name@name.test"}
+	)
+
+	var gp = models.User2{Name: "testing", Username: "Test", Password: "1", Email: "name@name.test"}
+
+	//SignUp
+	repo.On("CreateUser", ctx, user).Return(user.Id, nil)
+	q, err := uc.SignUp(ctx, gp)
+	assert.NoError(t, err)
+	assert.NotNil(t, q)
+
+	//Sign In  (Get Auth Token)
+	repo.On("GetUser", ctx, username, GeneratePasswordHash(password)).Return(user2, nil)
+	token, err := uc.SignIn(ctx, username, password)
+	assert.NoError(t, err)
+	assert.NotEmpty(t, token)
+
+	// Verify token
+	parsedUser, err := uc.ParseToken(ctx, token)
+	assert.NoError(t, err)
+	assert.Equal(t, user2, parsedUser)
+}

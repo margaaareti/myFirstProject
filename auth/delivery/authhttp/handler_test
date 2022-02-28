@@ -1,0 +1,35 @@
+package httpauth
+
+import (
+	"Test_derictory/auth/service"
+	"Test_derictory/models"
+	"bytes"
+	"encoding/json"
+	"github.com/gin-gonic/gin"
+	"github.com/stretchr/testify/assert"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+)
+
+func TestSignUp(t *testing.T) {
+
+	r := gin.Default()
+
+	uc := new(service.AuthUseCaseMock)
+
+	RegisterHTTPEndPoints(r, uc)
+
+	signUpBody := models.User{Username: "Test", Name: "Vlad", Password: "3r32tfgrtgtg45ghrt4", Email: "name@name.ru"}
+
+	body, err := json.Marshal(signUpBody)
+	assert.NoError(t, err)
+
+	uc.On("SignUp", signUpBody).Return(nil)
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/auth/sign-up", bytes.NewBuffer(body))
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, 200, w.Code)
+}
