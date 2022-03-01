@@ -54,11 +54,13 @@ func (h *Handler) SignIn(c *gin.Context) {
 		return
 	}
 
-	token, userID, err := h.useCase.SignIn(c.Request.Context(), inp.Username, inp.Password)
+	user, userID, err := h.useCase.SignIn(c.Request.Context(), inp.Username, inp.Password)
 	if err != nil {
 		newErrorResponse(c, http.StatusBadRequest, err.Error())
 		return
 	}
+
+	token, id, err := h.useCase.CreateToken(c.Request.Context(), user.Username, userID)
 
 	saveErr := h.useCase.CreateAuth(c.Request.Context(), userID, token)
 	if saveErr != nil {

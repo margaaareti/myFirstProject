@@ -21,8 +21,9 @@ const (
 
 type AuthClaims struct {
 	jwt.StandardClaims
-	User      *models.User2 `json:"user"`
-	TokenUUID uuid.UUID     `json:"access_uuid"`
+	Username  string    `json:"username"`
+	UserID    uint64    `json:"userID"`
+	TokenUUID uuid.UUID `json:"access_uuid"`
 }
 
 type AuthUseCase struct {
@@ -54,14 +55,21 @@ func GeneratePasswordHash(password string) string {
 	return fmt.Sprintf("%x", hash.Sum([]byte(salt)))
 }
 
-func (a *AuthUseCase) SignIn(ctx context.Context, username, password string) (*models.TokenDetails, uint64, error) {
+func (a *AuthUseCase) SignIn(ctx context.Context, username, password string) (*models.User2, error) {
 	passwordHash := GeneratePasswordHash(password)
 
 	user, err := a.repo.GetUser(ctx, username, passwordHash)
 	if err != nil {
-		return nil, 0, err
+		return nil, err
 	}
 
+	return user, nil
+
+}
+
+func (a *AuthUseCase) CreateToken(ctx context.Context, username string, userId uint64) (*models.TokenDetails, uint64, error) {
+
+	var err error
 	//Generate Access Token
 	td := &models.TokenDetails{}
 	td.AtExpires = time.Now().Add(tokenTTL).Unix()
@@ -77,7 +85,8 @@ func (a *AuthUseCase) SignIn(ctx context.Context, username, password string) (*m
 	}
 
 	claims := &AuthClaims{
-		User:      user,
+		Username:  username,
+		UserID:    userId,
 		TokenUUID: td.AccessUuid,
 		//AccessUUID: td.AccessUuid,
 		StandardClaims: jwt.StandardClaims{
@@ -85,7 +94,6 @@ func (a *AuthUseCase) SignIn(ctx context.Context, username, password string) (*m
 			ExpiresAt: td.AtExpires,
 			// Время генерации токена
 			IssuedAt: time.Now().Unix(),
-			Subject:  string(rune(user.Id)),
 		},
 	}
 
@@ -98,7 +106,7 @@ func (a *AuthUseCase) SignIn(ctx context.Context, username, password string) (*m
 	//Creating Refresh Token
 	rtClaims := jwt.MapClaims{}
 	rtClaims["refresh_uuid"] = td.RefreshUuid
-	rtClaims["user"] = user
+	rtClaims["user"] = username
 	rtClaims["exp"] = td.RtExpires
 
 	rt := jwt.NewWithClaims(jwt.SigningMethodHS256, rtClaims)
@@ -107,7 +115,7 @@ func (a *AuthUseCase) SignIn(ctx context.Context, username, password string) (*m
 		return nil, 0, err
 	}
 
-	return td, user.Id, nil
+	return td, userId, nil
 
 }
 
@@ -126,7 +134,7 @@ func (a *AuthUseCase) ParseToken(ctx context.Context, accessToken string) (*mode
 	if claims, ok := token.Claims.(*AuthClaims); ok && token.Valid {
 		return &models.AccessDetails{
 			AccessUUID: claims.TokenUUID.String(),
-			UserId:     claims.User.Id,
+			UserId:     claims.UserID,
 		}, nil
 	}
 
