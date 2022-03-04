@@ -26,6 +26,11 @@ type AuthClaims struct {
 	TokenUUID uuid.UUID `json:"access_uuid"`
 }
 
+type tokenResponse struct {
+	AccessToken  string `json:"accessToken"`
+	RefreshToken string `json:"refreshToken"`
+}
+
 type AuthUseCase struct {
 	repo auth.UserRepository
 	stg  auth.TokenStorage
@@ -139,6 +144,25 @@ func (a *AuthUseCase) ParseToken(ctx context.Context, accessToken string) (*mode
 	}
 
 	return nil, auth.ErrInvalidAccessToken
+
+}
+
+func (a *AuthUseCase) ParseRefresh(ctx context.Context, refreshToken string) (*tokenResponse, error) {
+	token, err := jwt.Parse(refreshToken, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+		return []byte(refreshKey), nil
+	})
+
+	//if there is an error, the token must have expired
+	if err != nil {
+		return nil, err
+	}
+
+	if _, ok := token.Claims.(jwt.Claims); ok && token.Valid {
+
+	}
 
 }
 

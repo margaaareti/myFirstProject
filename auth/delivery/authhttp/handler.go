@@ -21,11 +21,6 @@ type signInput struct {
 	Password string `form:"password"`
 }
 
-type tokenResponse struct {
-	AccessToken  string `json:"accessToken"`
-	RefreshToken string `json:"refreshToken"`
-}
-
 func (h *Handler) SignUp(c *gin.Context) {
 
 	var input models.User2
@@ -54,15 +49,15 @@ func (h *Handler) SignIn(c *gin.Context) {
 		return
 	}
 
-	user, userID, err := h.useCase.SignIn(c.Request.Context(), inp.Username, inp.Password)
+	user, err := h.useCase.SignIn(c.Request.Context(), inp.Username, inp.Password)
 	if err != nil {
 		newErrorResponse(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	token, id, err := h.useCase.CreateToken(c.Request.Context(), user.Username, userID)
+	token, id, err := h.useCase.CreateToken(c.Request.Context(), user.Username, user.Id)
 
-	saveErr := h.useCase.CreateAuth(c.Request.Context(), userID, token)
+	saveErr := h.useCase.CreateAuth(c.Request.Context(), id, token)
 	if saveErr != nil {
 		newErrorResponse(c, http.StatusBadRequest, err.Error())
 		return
