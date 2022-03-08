@@ -8,6 +8,9 @@ import (
 	"fmt"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/gofrs/uuid"
+	"github.com/pkg/errors"
+	"net/http"
+	"strconv"
 	"time"
 )
 
@@ -24,11 +27,6 @@ type AuthClaims struct {
 	Username  string    `json:"username"`
 	UserID    uint64    `json:"userID"`
 	TokenUUID uuid.UUID `json:"access_uuid"`
-}
-
-type tokenResponse struct {
-	AccessToken  string `json:"accessToken"`
-	RefreshToken string `json:"refreshToken"`
 }
 
 type AuthUseCase struct {
@@ -111,7 +109,8 @@ func (a *AuthUseCase) CreateToken(ctx context.Context, username string, userId u
 	//Creating Refresh Token
 	rtClaims := jwt.MapClaims{}
 	rtClaims["refresh_uuid"] = td.RefreshUuid
-	rtClaims["user"] = username
+	rtClaims["username"] = username
+	rtClaims["user_id"] = userId
 	rtClaims["exp"] = td.RtExpires
 
 	rt := jwt.NewWithClaims(jwt.SigningMethodHS256, rtClaims)
@@ -147,7 +146,7 @@ func (a *AuthUseCase) ParseToken(ctx context.Context, accessToken string) (*mode
 
 }
 
-func (a *AuthUseCase) ParseRefresh(ctx context.Context, refreshToken string) (*tokenResponse, error) {
+func (a *AuthUseCase) ParseRefresh(ctx context.Context, refreshToken string) (*models.TokenDetails, uint64, error) {
 	token, err := jwt.Parse(refreshToken, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
@@ -157,13 +156,48 @@ func (a *AuthUseCase) ParseRefresh(ctx context.Context, refreshToken string) (*t
 
 	//if there is an error, the token must have expired
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
-	if _, ok := token.Claims.(jwt.Claims); ok && token.Valid {
-
+	//is token valid?
+	if _, ok := token.Claims.(jwt.Claims); !ok && !token.Valid {
+		return nil, 0, errors.New("token is invalid")
 	}
 
+	//Since token is valid, get the uuid:
+	claims, ok := token.Claims.(jwt.MapClaims) //the token claims should conform to MapClaims
+	if ok && token.Valid {
+		refreshUuid, ok := claims["refresh_uuid"].(string) //convert to string
+		if !ok {
+			return nil, 0, errors.Errorf("%v", http.StatusUnprocessableEntity)
+		}
+		userId, err := strconv.ParseUint(claims["user_id"].(string), 10, 64)
+		if err != nil {
+			return nil, 0, errors.Errorf("%v: %s", http.StatusUnprocessableEntity, "Error occurred")
+		}
+
+		//Delete previous refresh token
+		deleted, delErr := a.stg.DeleteToken(ctx, refreshUuid)
+		if delErr != nil || deleted == 0 {
+			return nil, 0, delErr
+		}
+
+		//Create new pairs of refresh and access tokens
+		td, userID, createErr := a.CreateToken(ctx, claims["username"].(string), userId)
+		if createErr != nil {
+			return nil, 0, errors.Errorf("%v: %s", http.StatusForbidden, createErr.Error())
+		}
+
+		//save the tokens metadata to redis
+		saveErr := a.CreateAuth(ctx, userID, td)
+		if saveErr != nil {
+			return nil, 0, errors.Errorf("%v: Не удалось создать сессию", http.StatusForbidden)
+		}
+
+		return td, userID, nil
+	}
+
+	return nil, 0, errors.New("Refresh is failed")
 }
 
 func (a *AuthUseCase) CreateAuth(ctx context.Context, userid uint64, td *models.TokenDetails) error {

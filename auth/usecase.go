@@ -12,6 +12,7 @@ type UseCase interface {
 	SignIn(ctx context.Context, username, password string) (*models.User2, error)
 	CreateToken(ctx context.Context, username string, userId uint64) (*models.TokenDetails, uint64, error)
 	ParseToken(ctx context.Context, accessToken string) (*models.AccessDetails, error)
+	ParseRefresh(ctx context.Context, refreshToken string) (*models.TokenDetails, uint64, error)
 	CreateAuth(ctx context.Context, userId uint64, td *models.TokenDetails) error
 	LogOut(ctx context.Context, givenUuid string) (int64, error)
 }

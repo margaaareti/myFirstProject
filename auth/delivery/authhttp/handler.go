@@ -21,7 +21,16 @@ type signInput struct {
 	Password string `form:"password"`
 }
 
+type tokenResponse struct {
+	AccessToken  string `json:"accessToken"`
+	RefreshToken string `json:"refreshToken"`
+}
+
 func (h *Handler) SignUp(c *gin.Context) {
+
+	if c.Request.Method == "GET" {
+		newErrorResponse(c, http.StatusMethodNotAllowed, "ForbiddenMethod")
+	}
 
 	var input models.User2
 
@@ -41,6 +50,10 @@ func (h *Handler) SignUp(c *gin.Context) {
 }
 
 func (h *Handler) SignIn(c *gin.Context) {
+
+	if c.Request.Method != "POST" {
+		newErrorResponse(c, http.StatusMethodNotAllowed, "ForbiddenMethod")
+	}
 
 	inp := new(signInput)
 
@@ -63,6 +76,8 @@ func (h *Handler) SignIn(c *gin.Context) {
 		return
 	}
 
+	c.SetCookie("Authorization", token.AccessToken, 60*60*24, "/", "localhost", false, true)
+
 	c.JSON(http.StatusOK, map[string]interface{}{
 		"access_token":  token.AccessToken,
 		"refresh_token": token.RefreshToken,
@@ -73,6 +88,10 @@ func (h *Handler) SignIn(c *gin.Context) {
 }
 
 func (h *Handler) LogOut(c *gin.Context) {
+
+	if c.Request.Method != "POST" {
+		newErrorResponse(c, http.StatusMethodNotAllowed, "ForbiddenMethod")
+	}
 
 	authHeader := c.GetHeader("Authorization")
 
