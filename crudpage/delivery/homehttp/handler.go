@@ -12,8 +12,8 @@ type HomeHandler struct {
 	auth     auth.UseCase
 }
 
-func NewCrdHandler(handCrud crudpage.HomeUsecase) *HomeHandler {
-	return &HomeHandler{handHome: handCrud}
+func NewCrdHandler(handHome crudpage.HomeUsecase) *HomeHandler {
+	return &HomeHandler{handHome: handHome}
 }
 
 func (h *HomeHandler) ShowPage(c *gin.Context) {

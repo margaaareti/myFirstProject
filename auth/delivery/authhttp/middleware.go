@@ -8,6 +8,11 @@ import (
 	"net/http"
 )
 
+type tokenResponse struct {
+	AccessToken  string `json:"accessToken"`
+	RefreshToken string `json:"refreshToken"`
+}
+
 type AuthMiddleware struct {
 	usecase auth.UseCase
 	redDB   *redis.Client
@@ -18,7 +23,16 @@ func NewAuthMiddleware(usecase auth.UseCase, redDB *redis.Client) gin.HandlerFun
 }
 
 func (m *AuthMiddleware) Handle(c *gin.Context) {
-	token, err := c.Cookie("Authorization")
+
+	tokens := &tokenResponse{}
+	var err error
+
+	tokens.AccessToken, err = c.Cookie("Authorization")
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, "Cookie has not found")
+	}
+
+	tokens.RefreshToken, err = c.Cookie("RefreshToken")
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, "Cookie has not found")
 	}
@@ -26,7 +40,11 @@ func (m *AuthMiddleware) Handle(c *gin.Context) {
 	//c.Header("Authorization", fmt.Sprintf("Bearer %v", token))
 
 	//authHeader := c.GetHeader("Authorization")
-	if token == "" {
+	if tokens.AccessToken == "" {
+		newErrorResponse(c, 401, "Необходима авторизация ")
+		return
+	}
+	if tokens.RefreshToken == "" {
 		newErrorResponse(c, 401, "Необходима авторизация ")
 		return
 	}
@@ -42,14 +60,17 @@ func (m *AuthMiddleware) Handle(c *gin.Context) {
 	//return
 	//}
 
-	td, err := m.usecase.ParseToken(c.Request.Context(), token)
+	td, err := m.usecase.ParseToken(c.Request.Context(), tokens.AccessToken)
 	if err != nil {
+		td, userID, err := m.usecase.ParseRefresh(c.Request.Context(), tokens.RefreshToken)
+		tokens.AccessToken = td.AccessToken
+		tokens.RefreshToken = td.RefreshToken
+		c.Set(auth.CtxUserKey, userID)
 		logrus.Info(err)
 		status := http.StatusInternalServerError
 		if err == auth.ErrInvalidAccessToken {
 			status = http.StatusUnauthorized
 		}
-
 		c.AbortWithStatus(status)
 		return
 	}

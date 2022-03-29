@@ -21,11 +21,6 @@ type signInput struct {
 	Password string `form:"password"`
 }
 
-type tokenResponse struct {
-	AccessToken  string `json:"accessToken"`
-	RefreshToken string `json:"refreshToken"`
-}
-
 func (h *Handler) SignUp(c *gin.Context) {
 
 	if c.Request.Method == "GET" {
@@ -76,7 +71,8 @@ func (h *Handler) SignIn(c *gin.Context) {
 		return
 	}
 
-	c.SetCookie("Authorization", token.AccessToken, 60*60*24, "/", "localhost", false, true)
+	c.SetCookie("AccessToken", token.AccessToken, 60*60*24, "/", "localhost", false, true)
+	c.SetCookie("RefreshToken", token.RefreshToken, 60*60*24, "/", "localhost", false, true)
 
 	c.JSON(http.StatusOK, map[string]interface{}{
 		"access_token":  token.AccessToken,
