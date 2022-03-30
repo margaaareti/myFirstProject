@@ -10,7 +10,6 @@ import (
 	"github.com/gofrs/uuid"
 	"github.com/pkg/errors"
 	"net/http"
-	"strconv"
 	"time"
 )
 
@@ -146,7 +145,7 @@ func (a *AuthUseCase) ParseToken(ctx context.Context, accessToken string) (*mode
 
 }
 
-func (a *AuthUseCase) ParseRefresh(ctx context.Context, refreshToken string) (*models.TokenDetails, uint64, error) {
+func (a *AuthUseCase) ParseRefresh(ctx context.Context, refreshToken string) (*models.TokenDetails, string, error) {
 	token, err := jwt.Parse(refreshToken, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
@@ -156,12 +155,12 @@ func (a *AuthUseCase) ParseRefresh(ctx context.Context, refreshToken string) (*m
 
 	//if there is an error, the token must have expired
 	if err != nil {
-		return nil, 0, err
+		return nil, "", err
 	}
 
 	//is token valid?
 	if _, ok := token.Claims.(jwt.Claims); !ok && !token.Valid {
-		return nil, 0, errors.New("token is invalid")
+		return nil, "", errors.New("token is invalid")
 	}
 
 	//Since token is valid, get the uuid:
@@ -169,35 +168,38 @@ func (a *AuthUseCase) ParseRefresh(ctx context.Context, refreshToken string) (*m
 	if ok && token.Valid {
 		refreshUuid, ok := claims["refresh_uuid"].(string) //convert to string
 		if !ok {
-			return nil, 0, errors.Errorf("%v", http.StatusUnprocessableEntity)
+			return nil, "", errors.Errorf("%v", http.StatusUnprocessableEntity)
 		}
-		userId, err := strconv.ParseUint(claims["user_id"].(string), 10, 64)
-		if err != nil {
-			return nil, 0, errors.Errorf("%v: %s", http.StatusUnprocessableEntity, "Error occurred")
+		userId, ok := claims["user_id"].(float64)
+		if !ok {
+			return nil, "", errors.Errorf("%v: %s", http.StatusUnprocessableEntity, "Error occurred")
 		}
+
+		userIDstring := fmt.Sprint(userId)
+		userIdUint := uint64(userId)
 
 		//Delete previous refresh token
 		deleted, delErr := a.stg.DeleteToken(ctx, refreshUuid)
 		if delErr != nil || deleted == 0 {
-			return nil, 0, delErr
+			return nil, "", delErr
 		}
 
 		//Create new pairs of refresh and access tokens
-		td, userID, createErr := a.CreateToken(ctx, claims["username"].(string), userId)
+		td, userID, createErr := a.CreateToken(ctx, claims["username"].(string), userIdUint)
 		if createErr != nil {
-			return nil, 0, errors.Errorf("%v: %s", http.StatusForbidden, createErr.Error())
+			return nil, "", errors.Errorf("%v: %s", http.StatusForbidden, createErr.Error())
 		}
 
 		//save the tokens metadata to redis
 		saveErr := a.CreateAuth(ctx, userID, td)
 		if saveErr != nil {
-			return nil, 0, errors.Errorf("%v: Не удалось создать сессию", http.StatusForbidden)
+			return nil, "", errors.Errorf("%v: Не удалось создать сессию", http.StatusForbidden)
 		}
 
-		return td, userID, nil
+		return td, userIDstring, nil
 	}
 
-	return nil, 0, errors.New("Refresh is failed")
+	return nil, "", errors.New("Refresh is failed")
 }
 
 func (a *AuthUseCase) CreateAuth(ctx context.Context, userid uint64, td *models.TokenDetails) error {

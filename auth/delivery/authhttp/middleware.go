@@ -24,27 +24,26 @@ func NewAuthMiddleware(usecase auth.UseCase, redDB *redis.Client) gin.HandlerFun
 
 func (m *AuthMiddleware) Handle(c *gin.Context) {
 
-	tokens := &tokenResponse{}
-	var err error
-
-	tokens.AccessToken, err = c.Cookie("Authorization")
+	aToken, err := c.Cookie("AccessToken")
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, "Cookie has not found")
+		c.AbortWithStatusJSON(http.StatusUnauthorized, "Необходима авторизация")
+		return
 	}
 
-	tokens.RefreshToken, err = c.Cookie("RefreshToken")
+	rToken, err := c.Cookie("RefreshToken")
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, "Cookie has not found")
+		c.AbortWithStatusJSON(http.StatusUnauthorized, "Нет данных авторизации")
+		return
 	}
 
 	//c.Header("Authorization", fmt.Sprintf("Bearer %v", token))
 
 	//authHeader := c.GetHeader("Authorization")
-	if tokens.AccessToken == "" {
+	if aToken == "" {
 		newErrorResponse(c, 401, "Необходима авторизация ")
 		return
 	}
-	if tokens.RefreshToken == "" {
+	if rToken == "" {
 		newErrorResponse(c, 401, "Необходима авторизация ")
 		return
 	}
@@ -60,26 +59,33 @@ func (m *AuthMiddleware) Handle(c *gin.Context) {
 	//return
 	//}
 
-	td, err := m.usecase.ParseToken(c.Request.Context(), tokens.AccessToken)
+	td, err := m.usecase.ParseToken(c.Request.Context(), aToken)
 	if err != nil {
-		td, userID, err := m.usecase.ParseRefresh(c.Request.Context(), tokens.RefreshToken)
-		tokens.AccessToken = td.AccessToken
-		tokens.RefreshToken = td.RefreshToken
+		tokens, userID, err := m.usecase.ParseRefresh(c.Request.Context(), rToken)
+		if err != nil {
+			newErrorResponse(c, 401, err.Error())
+			return
+		}
+		c.SetCookie("AccessToken", tokens.AccessToken, 60*60*24, "/", "localhost", false, true)
+		c.SetCookie("RefreshToken", tokens.RefreshToken, 60*60*24, "/", "localhost", false, true)
+
 		c.Set(auth.CtxUserKey, userID)
 		logrus.Info(err)
-		status := http.StatusInternalServerError
-		if err == auth.ErrInvalidAccessToken {
-			status = http.StatusUnauthorized
+		//status := http.StatusInternalServerError
+		//if err == auth.ErrInvalidAccessToken {
+		//	status = http.StatusUnauthorized
+		//}
+		//c.AbortWithStatus(status)
+		//return
+	} else {
+
+		userID, err := m.redDB.Get(c.Request.Context(), td.AccessUUID).Result()
+		if err != nil {
+			newErrorResponse(c, 401, err.Error())
+			return
 		}
-		c.AbortWithStatus(status)
-		return
-	}
 
-	userID, err := m.redDB.Get(c.Request.Context(), td.AccessUUID).Result()
-	if err != nil {
-		return
+		c.Set(auth.CtxUserKey, userID)
 	}
-
-	c.Set(auth.CtxUserKey, userID)
 
 }
