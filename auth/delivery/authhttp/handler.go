@@ -5,7 +5,6 @@ import (
 	"Test_derictory/models"
 	"github.com/gin-gonic/gin"
 	"net/http"
-	"strings"
 )
 
 type Handler struct {
@@ -23,8 +22,9 @@ type signInput struct {
 
 func (h *Handler) SignUp(c *gin.Context) {
 
-	if c.Request.Method == "GET" {
+	if c.Request.Method != "POST" {
 		newErrorResponse(c, http.StatusMethodNotAllowed, "ForbiddenMethod")
+		return
 	}
 
 	var input models.User2
@@ -50,9 +50,9 @@ func (h *Handler) SignIn(c *gin.Context) {
 		newErrorResponse(c, http.StatusMethodNotAllowed, "ForbiddenMethod")
 	}
 
-	inp := new(signInput)
+	var inp signInput
 
-	if err := c.Bind(inp); err != nil {
+	if err := c.Bind(&inp); err != nil {
 		newErrorResponse(c, http.StatusBadRequest, err.Error())
 		return
 	}
@@ -89,7 +89,7 @@ func (h *Handler) LogOut(c *gin.Context) {
 		newErrorResponse(c, http.StatusMethodNotAllowed, "ForbiddenMethod")
 	}
 
-	authHeader := c.GetHeader("Authorization")
+	/*authHeader := c.GetHeader("Authorization")
 
 	headerParts := strings.Split(authHeader, " ")
 	if len(headerParts) != 2 {
@@ -100,9 +100,11 @@ func (h *Handler) LogOut(c *gin.Context) {
 	if headerParts[0] != "Bearer" {
 		newErrorResponse(c, http.StatusUnauthorized, "Чтобы выйти- сперва следует зайти")
 		return
-	}
+	}*/
 
-	myIn, err := h.useCase.ParseToken(c.Request.Context(), headerParts[1])
+	aToken, err := c.Cookie("AccessToken")
+
+	myIn, err := h.useCase.ParseToken(c.Request.Context(), aToken)
 	if err != nil {
 		newErrorResponse(c, http.StatusUnauthorized, err.Error())
 		return
