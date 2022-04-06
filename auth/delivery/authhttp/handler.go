@@ -103,6 +103,7 @@ func (h *Handler) LogOut(c *gin.Context) {
 	}*/
 
 	aToken, err := c.Cookie("AccessToken")
+	//rToken, err := c.Cookie("RefreshToken")
 
 	myIn, err := h.useCase.ParseToken(c.Request.Context(), aToken)
 	if err != nil {

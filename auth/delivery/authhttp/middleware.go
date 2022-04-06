@@ -71,14 +71,14 @@ func (m *AuthMiddleware) Handle(c *gin.Context) {
 
 		c.Set(auth.CtxUserKey, userID)
 		logrus.Info(err)
-		//status := http.StatusInternalServerError
-		//if err == auth.ErrInvalidAccessToken {
-		//	status = http.StatusUnauthorized
-		//}
-		//c.AbortWithStatus(status)
-		//return
-	} else {
 
+	} else if err == auth.ErrInvalidAccessToken {
+		status := http.StatusInternalServerError
+		status = http.StatusUnauthorized
+		c.AbortWithStatus(status)
+		return
+
+	} else {
 		userID, err := m.redDB.Get(c.Request.Context(), td.AccessUUID).Result()
 		if err != nil {
 			newErrorResponse(c, 401, err.Error())

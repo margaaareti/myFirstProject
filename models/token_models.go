@@ -12,6 +12,7 @@ type TokenDetails struct {
 }
 
 type AccessDetails struct {
-	AccessUUID string
-	UserId     uint64
+	AccessUUID  string
+	RefreshUUID string
+	UserId      uint64
 }
