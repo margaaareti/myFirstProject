@@ -59,9 +59,9 @@ func (m *AuthMiddleware) Handle(c *gin.Context) {
 	//return
 	//}
 
-	td, err := m.usecase.ParseToken(c.Request.Context(), aToken)
+	td, err := m.usecase.ParseAcsToken(c.Request.Context(), aToken)
 	if err != nil {
-		tokens, userID, err := m.usecase.ParseRefresh(c.Request.Context(), rToken)
+		tokens, userID, err := m.usecase.ParseAndNew(c.Request.Context(), rToken)
 		if err != nil {
 			newErrorResponse(c, 401, err.Error())
 			return

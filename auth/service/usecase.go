@@ -69,7 +69,7 @@ func (a *AuthUseCase) SignIn(ctx context.Context, username, password string) (*m
 
 }
 
-func (a *AuthUseCase) CreateToken(ctx context.Context, username string, userId uint64) (*models.TokenDetails, uint64, error) {
+func (a *AuthUseCase) CreateTokens(ctx context.Context, username string, userId uint64) (*models.TokenDetails, uint64, error) {
 
 	var err error
 	//Generate Access Token
@@ -122,7 +122,7 @@ func (a *AuthUseCase) CreateToken(ctx context.Context, username string, userId u
 
 }
 
-func (a *AuthUseCase) ParseToken(ctx context.Context, accessToken string) (*models.AccessDetails, error) {
+func (a *AuthUseCase) ParseAcsToken(ctx context.Context, accessToken string) (*models.AccessDetails, error) {
 	token, err := jwt.ParseWithClaims(accessToken, &AuthClaims{}, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
@@ -145,7 +145,38 @@ func (a *AuthUseCase) ParseToken(ctx context.Context, accessToken string) (*mode
 
 }
 
-func (a *AuthUseCase) ParseRefresh(ctx context.Context, refreshToken string) (*models.TokenDetails, string, error) {
+func (a *AuthUseCase) ParseRefToken(ctx context.Context, refreshToken string) (string, error) {
+	token, err := jwt.Parse(refreshToken, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+		return []byte(refreshKey), nil
+	})
+
+	//if there is an error, the token must have expired
+	if err != nil {
+		return "", err
+	}
+
+	//is token valid?
+	if _, ok := token.Claims.(jwt.Claims); !ok && !token.Valid {
+		return "", errors.New("token is invalid")
+	}
+
+	//Since token is valid, get the uuid:
+	claims, ok := token.Claims.(jwt.MapClaims) //the token claims should conform to MapClaims
+	if ok && token.Valid {
+		refreshUuid, ok := claims["refresh_uuid"].(string) //convert to string
+		if !ok {
+			return "", errors.Errorf("%v", http.StatusUnprocessableEntity)
+		}
+		return refreshUuid, nil
+	}
+
+	return "", err
+}
+
+func (a *AuthUseCase) ParseAndNew(ctx context.Context, refreshToken string) (*models.TokenDetails, string, error) {
 	token, err := jwt.Parse(refreshToken, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
@@ -175,17 +206,20 @@ func (a *AuthUseCase) ParseRefresh(ctx context.Context, refreshToken string) (*m
 			return nil, "", errors.Errorf("%v: %s", http.StatusUnprocessableEntity, "Error occurred")
 		}
 
-		userIDstring := fmt.Sprint(userId)
+		userIdStr := fmt.Sprint(userId)
 		userIdUint := uint64(userId)
 
+		j := make([]string, 2)
+		k := append(j, refreshUuid)
+
 		//Delete previous refresh token
-		deleted, delErr := a.stg.DeleteToken(ctx, refreshUuid)
+		deleted, delErr := a.stg.DeleteToken(ctx, k)
 		if delErr != nil || deleted == 0 {
 			return nil, "", delErr
 		}
 
 		//Create new pairs of refresh and access tokens
-		td, userID, createErr := a.CreateToken(ctx, claims["username"].(string), userIdUint)
+		td, userID, createErr := a.CreateTokens(ctx, claims["username"].(string), userIdUint)
 		if createErr != nil {
 			return nil, "", errors.Errorf("%v: %s", http.StatusForbidden, createErr.Error())
 		}
@@ -196,7 +230,7 @@ func (a *AuthUseCase) ParseRefresh(ctx context.Context, refreshToken string) (*m
 			return nil, "", errors.Errorf("%v: Не удалось создать сессию", http.StatusForbidden)
 		}
 
-		return td, userIDstring, nil
+		return td, userIdStr, nil
 	}
 
 	return nil, "", errors.New("Refresh is failed")
@@ -208,8 +242,8 @@ func (a *AuthUseCase) CreateAuth(ctx context.Context, userid uint64, td *models.
 
 }
 
-func (a *AuthUseCase) LogOut(ctx context.Context, givenUUID string) (int64, error) {
-
+func (a *AuthUseCase) LogOut(ctx context.Context, givenUUID ...string) (int64, error) {
+	
 	return a.stg.DeleteToken(ctx, givenUUID)
 
 }

@@ -63,7 +63,7 @@ func (h *Handler) SignIn(c *gin.Context) {
 		return
 	}
 
-	token, id, err := h.useCase.CreateToken(c.Request.Context(), user.Username, user.Id)
+	token, id, err := h.useCase.CreateTokens(c.Request.Context(), user.Username, user.Id)
 
 	saveErr := h.useCase.CreateAuth(c.Request.Context(), id, token)
 	if saveErr != nil {
@@ -103,15 +103,20 @@ func (h *Handler) LogOut(c *gin.Context) {
 	}*/
 
 	aToken, err := c.Cookie("AccessToken")
-	//rToken, err := c.Cookie("RefreshToken")
+	rToken, err := c.Cookie("RefreshToken")
 
-	myIn, err := h.useCase.ParseToken(c.Request.Context(), aToken)
+	myIn, err := h.useCase.ParseAcsToken(c.Request.Context(), aToken)
 	if err != nil {
 		newErrorResponse(c, http.StatusUnauthorized, err.Error())
 		return
 	}
 
-	deleted, delErr := h.useCase.LogOut(c.Request.Context(), myIn.AccessUUID)
+	myIn.RefreshUUID, err = h.useCase.ParseRefToken(c.Request.Context(), rToken)
+	if err != nil {
+		newErrorResponse(c, http.StatusUnauthorized, err.Error())
+	}
+
+	deleted, delErr := h.useCase.LogOut(c.Request.Context(), myIn.AccessUUID, myIn.RefreshUUID)
 	if delErr != nil && deleted == 0 {
 		c.JSON(401, "unauthorized")
 		return

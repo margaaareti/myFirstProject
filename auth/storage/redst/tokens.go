@@ -35,11 +35,26 @@ func (a *AuthRedis) CreateAuth(ctx context.Context, userid uint64, td *models.To
 
 }
 
-func (a *AuthRedis) DeleteToken(ctx context.Context, givenUuid string) (int64, error) {
+func (a *AuthRedis) DeleteToken(ctx context.Context, givenUuid []string) (int64, error) {
 
-	deleted, err := a.storage.Del(ctx, givenUuid).Result()
-	if err != nil {
-		return 0, err
+	if len(givenUuid) == 2 {
+		aToken := givenUuid[0]
+		rToken := givenUuid[1]
+
+		deleted, err := a.storage.Del(ctx, aToken, rToken).Result()
+		if err != nil {
+			return 0, err
+		}
+		return deleted, nil
+
+	} else {
+		rToken := givenUuid[0]
+
+		deleted, err := a.storage.Del(ctx, rToken).Result()
+		if err != nil {
+			return 0, err
+		}
+		return deleted, nil
+
 	}
-	return deleted, nil
 }
