@@ -6,9 +6,8 @@ import (
 	"Test_derictory/auth/service"
 	"Test_derictory/auth/storage/postgres"
 	"Test_derictory/auth/storage/redst"
-	"Test_derictory/crudpage"
-	"Test_derictory/crudpage/delivery/homehttp"
-	"Test_derictory/crudpage/myservice"
+	"Test_derictory/mainpage"
+	"Test_derictory/mainpage/delivery/mainhttp"
 	"Test_derictory/server/repository"
 	"context"
 	"github.com/gin-gonic/gin"
@@ -24,7 +23,7 @@ import (
 type App struct {
 	httpServer *http.Server
 	authUC     auth.UseCase
-	crudUC     crudpage.HomeUsecase
+	homeUC     mainpage.HomePage
 	redisDB    *redis.Client
 }
 
@@ -58,12 +57,12 @@ func NewApp() *App {
 	}
 
 	userRepo := postgres.NewAuthPostgres(db)
-	tokenStrg := redst.NewAuthRedis(rdb)
-	crudUsecase := myservice.NewCrudUseCase(rdb)
+	tokenStg := redst.NewAuthRedis(rdb)
+	//homeUseCase := mainservice.NewHomeUseCase(tokenStg)
 
 	return &App{
-		authUC:  service.NewAuthUseCase(userRepo, tokenStrg),
-		crudUC:  crudUsecase,
+		authUC: service.NewAuthUseCase(userRepo, tokenStg),
+		//homeUC:  homeUseCase,
 		redisDB: rdb,
 	}
 
@@ -86,7 +85,7 @@ func (a *App) Run(port string) error {
 	authMiddleware := authhttp.NewAuthMiddleware(a.authUC, a.redisDB)
 	api := router.Group("/api", authMiddleware)
 
-	homehttp.RegisterHTTPEndPoints(api, a.crudUC)
+	mainhttp.RegisterHTTPEndPoints(api, a.homeUC, a.authUC)
 
 	a.httpServer = &http.Server{
 		Addr:           ":" + port,

@@ -27,6 +27,4 @@ func RegisterHTTPEndPoints(router *gin.Engine, uc auth.UseCase) {
 
 		authEndpoints.POST("/sign-in", h.SignIn)
 	}
-
-	router.POST("/log-out", h.LogOut)
 }

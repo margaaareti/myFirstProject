@@ -14,12 +14,12 @@ type tokenResponse struct {
 }
 
 type AuthMiddleware struct {
-	usecase auth.UseCase
+	useCase auth.UseCase
 	redDB   *redis.Client
 }
 
-func NewAuthMiddleware(usecase auth.UseCase, redDB *redis.Client) gin.HandlerFunc {
-	return (&AuthMiddleware{usecase: usecase, redDB: redDB}).Handle
+func NewAuthMiddleware(useCase auth.UseCase, redDB *redis.Client) gin.HandlerFunc {
+	return (&AuthMiddleware{useCase: useCase, redDB: redDB}).Handle
 }
 
 func (m *AuthMiddleware) Handle(c *gin.Context) {
@@ -59,17 +59,32 @@ func (m *AuthMiddleware) Handle(c *gin.Context) {
 	//return
 	//}
 
-	td, err := m.usecase.ParseAcsToken(c.Request.Context(), aToken)
+	ad, err := m.useCase.ParseAcsToken(c.Request.Context(), aToken)
 	if err != nil {
-		tokens, userID, err := m.usecase.ParseAndNew(c.Request.Context(), rToken)
+
+		uuid, username, err := m.useCase.ParseRefToken(c.Request.Context(), rToken)
 		if err != nil {
 			newErrorResponse(c, 401, err.Error())
 			return
 		}
+
+		deletedId, delErr := m.useCase.DeleteTokens(c.Request.Context(), uuid)
+		if delErr != nil || deletedId == 0 {
+			newErrorResponse(c, 401, delErr.Error())
+			return
+		}
+		tokens, id, err := m.useCase.CreateTokens(c.Request.Context(), username, deletedId)
+
+		saveErr := m.useCase.CreateAuth(c.Request.Context(), id, tokens)
+		if saveErr != nil {
+			newErrorResponse(c, http.StatusBadRequest, err.Error())
+			return
+		}
+
 		c.SetCookie("AccessToken", tokens.AccessToken, 60*60*24, "/", "localhost", false, true)
 		c.SetCookie("RefreshToken", tokens.RefreshToken, 60*60*24, "/", "localhost", false, true)
 
-		c.Set(auth.CtxUserKey, userID)
+		c.Set(auth.CtxUserKey, id)
 		logrus.Info(err)
 
 	} else if err == auth.ErrInvalidAccessToken {
@@ -79,7 +94,7 @@ func (m *AuthMiddleware) Handle(c *gin.Context) {
 		return
 
 	} else {
-		userID, err := m.redDB.Get(c.Request.Context(), td.AccessUUID).Result()
+		userID, err := m.redDB.Get(c.Request.Context(), ad.AccessUUID).Result()
 		if err != nil {
 			newErrorResponse(c, 401, err.Error())
 			return

@@ -4,6 +4,7 @@ import (
 	"Test_derictory/models"
 	"context"
 	"github.com/go-redis/redis/v8"
+	"github.com/pkg/errors"
 	"strconv"
 	"time"
 )
@@ -35,7 +36,7 @@ func (a *AuthRedis) CreateAuth(ctx context.Context, userid uint64, td *models.To
 
 }
 
-func (a *AuthRedis) DeleteToken(ctx context.Context, givenUuid []string) (int64, error) {
+func (a *AuthRedis) DeleteToken(ctx context.Context, givenUuid []string) (uint64, error) {
 
 	if len(givenUuid) == 2 {
 		aToken := givenUuid[0]
@@ -45,16 +46,18 @@ func (a *AuthRedis) DeleteToken(ctx context.Context, givenUuid []string) (int64,
 		if err != nil {
 			return 0, err
 		}
-		return deleted, nil
+		return uint64(deleted), nil
 
-	} else {
+	} else if len(givenUuid) == 1 {
 		rToken := givenUuid[0]
 
 		deleted, err := a.storage.Del(ctx, rToken).Result()
 		if err != nil {
 			return 0, err
 		}
-		return deleted, nil
+		return uint64(deleted), nil
 
+	} else {
+		return 0, errors.Errorf("GivenUUID slice too large: %v", len(givenUuid))
 	}
 }

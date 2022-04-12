@@ -28,6 +28,11 @@ type AuthClaims struct {
 	TokenUUID uuid.UUID `json:"access_uuid"`
 }
 
+type NewTokens struct {
+	AccessToken  string
+	RefreshToken string
+}
+
 type AuthUseCase struct {
 	repo auth.UserRepository
 	stg  auth.TokenStorage
@@ -145,7 +150,7 @@ func (a *AuthUseCase) ParseAcsToken(ctx context.Context, accessToken string) (*m
 
 }
 
-func (a *AuthUseCase) ParseRefToken(ctx context.Context, refreshToken string) (string, error) {
+func (a *AuthUseCase) ParseRefToken(ctx context.Context, refreshToken string) (string, string, error) {
 	token, err := jwt.Parse(refreshToken, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
@@ -155,12 +160,12 @@ func (a *AuthUseCase) ParseRefToken(ctx context.Context, refreshToken string) (s
 
 	//if there is an error, the token must have expired
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	//is token valid?
 	if _, ok := token.Claims.(jwt.Claims); !ok && !token.Valid {
-		return "", errors.New("token is invalid")
+		return "", "", errors.Errorf("%v", http.StatusUnprocessableEntity)
 	}
 
 	//Since token is valid, get the uuid:
@@ -168,72 +173,23 @@ func (a *AuthUseCase) ParseRefToken(ctx context.Context, refreshToken string) (s
 	if ok && token.Valid {
 		refreshUuid, ok := claims["refresh_uuid"].(string) //convert to string
 		if !ok {
-			return "", errors.Errorf("%v", http.StatusUnprocessableEntity)
+			return "", "", errors.Errorf("%v", http.StatusUnprocessableEntity)
 		}
-		return refreshUuid, nil
+		username, ok := claims["username"].(string)
+		if !ok {
+			return "", "", errors.Errorf("%v", http.StatusUnprocessableEntity)
+		}
+
+		return refreshUuid, username, nil
 	}
 
-	return "", err
+	return "", "", err
 }
 
-func (a *AuthUseCase) ParseAndNew(ctx context.Context, refreshToken string) (*models.TokenDetails, string, error) {
-	token, err := jwt.Parse(refreshToken, func(token *jwt.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
-		}
-		return []byte(refreshKey), nil
-	})
+func (a *AuthUseCase) DeleteTokens(ctx context.Context, tokensUUID ...string) (uint64, error) {
 
-	//if there is an error, the token must have expired
-	if err != nil {
-		return nil, "", err
-	}
+	return a.stg.DeleteToken(ctx, tokensUUID)
 
-	//is token valid?
-	if _, ok := token.Claims.(jwt.Claims); !ok && !token.Valid {
-		return nil, "", errors.New("token is invalid")
-	}
-
-	//Since token is valid, get the uuid:
-	claims, ok := token.Claims.(jwt.MapClaims) //the token claims should conform to MapClaims
-	if ok && token.Valid {
-		refreshUuid, ok := claims["refresh_uuid"].(string) //convert to string
-		if !ok {
-			return nil, "", errors.Errorf("%v", http.StatusUnprocessableEntity)
-		}
-		userId, ok := claims["user_id"].(float64)
-		if !ok {
-			return nil, "", errors.Errorf("%v: %s", http.StatusUnprocessableEntity, "Error occurred")
-		}
-
-		userIdStr := fmt.Sprint(userId)
-		userIdUint := uint64(userId)
-
-		j := make([]string, 2)
-		k := append(j, refreshUuid)
-
-		//Delete previous refresh token
-		deleted, delErr := a.stg.DeleteToken(ctx, k)
-		if delErr != nil || deleted == 0 {
-			return nil, "", delErr
-		}
-
-		//Create new pairs of refresh and access tokens
-		td, userID, createErr := a.CreateTokens(ctx, claims["username"].(string), userIdUint)
-		if createErr != nil {
-			return nil, "", errors.Errorf("%v: %s", http.StatusForbidden, createErr.Error())
-		}
-
-		//save the tokens metadata to redis
-		saveErr := a.CreateAuth(ctx, userID, td)
-		if saveErr != nil {
-			return nil, "", errors.Errorf("%v: Не удалось создать сессию", http.StatusForbidden)
-		}
-
-		return td, userIdStr, nil
-	}
-
-	return nil, "", errors.New("Refresh is failed")
 }
 
 func (a *AuthUseCase) CreateAuth(ctx context.Context, userid uint64, td *models.TokenDetails) error {
@@ -242,8 +198,8 @@ func (a *AuthUseCase) CreateAuth(ctx context.Context, userid uint64, td *models.
 
 }
 
-func (a *AuthUseCase) LogOut(ctx context.Context, givenUUID ...string) (int64, error) {
-	
+func (a *AuthUseCase) LogOut(ctx context.Context, givenUUID ...string) (uint64, error) {
+
 	return a.stg.DeleteToken(ctx, givenUUID)
 
 }
