@@ -1,7 +1,10 @@
 package mainpage
 
-import "context"
+import (
+	"Test_derictory/models"
+	"context"
+)
 
 type HomeRepo interface {
-	LogOut(ctx context.Context, givenUuid ...string) (int64, error)
+	CreateStudent(ctx context.Context, userId uint64, student models.Student) (uint64, error)
 }

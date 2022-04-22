@@ -75,3 +75,7 @@ func (h *HomeHandler) LogOut(c *gin.Context) {
 	c.Redirect(303, "/auth/sign-in")
 
 }
+
+func (h *HomeHandler) CreateEntry(c *gin.Context) {
+
+}
