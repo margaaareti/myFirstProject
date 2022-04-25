@@ -6,5 +6,6 @@ import (
 )
 
 type HomePage interface {
-	AddStudent(ctx context.Context, userId int, student models.Student) (int, error)
+	AddStudent(ctx context.Context, userId uint64, student models.Student) (uint64, error)
+	GetAllNotice(ctx context.Context) ([]models.Student, error)
 }

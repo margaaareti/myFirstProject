@@ -15,7 +15,7 @@ import (
 
 const (
 	salt       = "bcb545454yh5p5HG"
-	tokenTTL   = 1 * time.Minute
+	tokenTTL   = 1 * time.Hour
 	refreshTTL = 24 * 7 * time.Hour
 	signingKey = "QHhpZGlF2DG3SD3F3G2SDF3H4vCg=="
 	refreshKey = "ds7B989umHJ98opi;m2"

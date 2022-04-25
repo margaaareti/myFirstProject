@@ -8,6 +8,8 @@ import (
 	"Test_derictory/auth/storage/redst"
 	"Test_derictory/mainpage"
 	"Test_derictory/mainpage/delivery/mainhttp"
+	"Test_derictory/mainpage/mainservice"
+	"Test_derictory/mainpage/storage/homerepo"
 	"Test_derictory/server/repository"
 	"context"
 	"github.com/gin-gonic/gin"
@@ -22,14 +24,14 @@ import (
 
 type App struct {
 	httpServer *http.Server
+	redisDB    *redis.Client
 	authUC     auth.UseCase
 	homeUC     mainpage.HomePage
-	redisDB    *redis.Client
 }
 
 func NewApp() *App {
 
-	//redst
+	//redis
 	mediator := make(chan *redis.Client)
 
 	go func() {
@@ -58,11 +60,11 @@ func NewApp() *App {
 
 	userRepo := postgres.NewAuthPostgres(db)
 	tokenStg := redst.NewAuthRedis(rdb)
-	//homeUseCase := mainservice.NewHomeUseCase(tokenStg)
+	homeRepo := homerepo.NewStudentRepo(db)
 
 	return &App{
-		authUC: service.NewAuthUseCase(userRepo, tokenStg),
-		//homeUC:  homeUseCase,
+		authUC:  service.NewAuthUseCase(userRepo, tokenStg),
+		homeUC:  mainservice.NewHomeUseCase(homeRepo),
 		redisDB: rdb,
 	}
 

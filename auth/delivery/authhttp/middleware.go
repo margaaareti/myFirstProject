@@ -4,14 +4,11 @@ import (
 	"Test_derictory/auth"
 	"github.com/gin-gonic/gin"
 	"github.com/go-redis/redis/v8"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"net/http"
+	"strconv"
 )
-
-type tokenResponse struct {
-	AccessToken  string `json:"accessToken"`
-	RefreshToken string `json:"refreshToken"`
-}
 
 type AuthMiddleware struct {
 	useCase auth.UseCase
@@ -36,9 +33,6 @@ func (m *AuthMiddleware) Handle(c *gin.Context) {
 		return
 	}
 
-	//c.Header("Authorization", fmt.Sprintf("Bearer %v", token))
-
-	//authHeader := c.GetHeader("Authorization")
 	if aToken == "" {
 		newErrorResponse(c, 401, "Необходима авторизация ")
 		return
@@ -47,17 +41,6 @@ func (m *AuthMiddleware) Handle(c *gin.Context) {
 		newErrorResponse(c, 401, "Необходима авторизация ")
 		return
 	}
-
-	//headerParts := strings.Split(token, "+")
-	//if len(headerParts) != 2 {
-	//	c.AbortWithStatus(http.StatusUnauthorized)
-	//	return
-	//}
-
-	//if headerParts[0] != "Bearer" {
-	//c.AbortWithStatus(http.StatusUnauthorized)
-	//return
-	//}
 
 	ad, err := m.useCase.ParseAcsToken(c.Request.Context(), aToken)
 	if err != nil {
@@ -102,5 +85,25 @@ func (m *AuthMiddleware) Handle(c *gin.Context) {
 
 		c.Set(auth.CtxUserKey, userID)
 	}
+
+}
+
+func GetUserId(c *gin.Context) (uint64, error) {
+	id, ok := c.Get(auth.CtxUserKey)
+	logrus.Info(id)
+	if !ok {
+		return 0, errors.New("user id not found")
+	}
+	//Приводим id в соответствубщему типу
+	idStr, ok := id.(string)
+	if !ok {
+		return 0, errors.New("user id not found")
+	}
+	u64, err := strconv.ParseUint(idStr, 10, 32)
+	if err != nil {
+		return 0, errors.New("some shit happened")
+	}
+
+	return u64, nil
 
 }

@@ -16,10 +16,11 @@ CREATE TABLE students
     name    varchar(255) not null,
     surname varchar(255) not null,
     patronymic varchar(255),
-    isu_number int not null,
+    isu_number varchar(255) not null unique ,
     added_by int references users (id) on delete cascade not null,
     title varchar(255) not null,
-    description varchar(255)
+    description varchar(255),
+    reg_date      timestamp with time zone default current_timestamp
 );
 
 

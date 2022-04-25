@@ -11,5 +11,7 @@ func RegisterHTTPEndPoints(c *gin.RouterGroup, crd mainpage.HomePage, auth auth.
 
 	c.GET("/home", cr.ShowPage)
 	c.POST("/log-out", cr.LogOut)
+	c.POST("/home/add", cr.CreateEntry)
+	c.GET("/home/getAll", cr.AllNotes)
 
 }

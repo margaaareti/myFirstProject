@@ -7,4 +7,5 @@ import (
 
 type HomeRepo interface {
 	CreateStudent(ctx context.Context, userId uint64, student models.Student) (uint64, error)
+	PullAllNotice(ctx context.Context) ([]models.Student, error)
 }

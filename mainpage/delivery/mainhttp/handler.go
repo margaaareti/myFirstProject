@@ -2,7 +2,9 @@ package mainhttp
 
 import (
 	"Test_derictory/auth"
+	"Test_derictory/auth/delivery/authhttp"
 	"Test_derictory/mainpage"
+	"Test_derictory/models"
 	"github.com/gin-gonic/gin"
 	"net/http"
 )
@@ -35,19 +37,6 @@ func (h *HomeHandler) LogOut(c *gin.Context) {
 		newErrorResponse(c, http.StatusMethodNotAllowed, "ForbiddenMethod")
 	}
 
-	/*authHeader := c.GetHeader("Authorization")
-
-	headerParts := strings.Split(authHeader, " ")
-	if len(headerParts) != 2 {
-		newErrorResponse(c, http.StatusUnauthorized, "Чтобы выйти- сперва следует зайти")
-		return
-	}
-
-	if headerParts[0] != "Bearer" {
-		newErrorResponse(c, http.StatusUnauthorized, "Чтобы выйти- сперва следует зайти")
-		return
-	}*/
-
 	aToken, err := c.Cookie("AccessToken")
 	rToken, err := c.Cookie("RefreshToken")
 
@@ -78,4 +67,38 @@ func (h *HomeHandler) LogOut(c *gin.Context) {
 
 func (h *HomeHandler) CreateEntry(c *gin.Context) {
 
+	userId, err := authhttp.GetUserId(c)
+	if err != nil {
+		newErrorResponse(c, http.StatusUnauthorized, err.Error())
+		return
+	}
+
+	var input models.Student
+	if err := c.BindJSON(&input); err != nil {
+		newErrorResponse(c, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	id, err := h.handHome.AddStudent(c.Request.Context(), userId, input)
+	if err != nil {
+		newErrorResponse(c, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	c.JSON(http.StatusOK, map[string]interface{}{
+		"id": id,
+	})
+}
+
+func (h *HomeHandler) AllNotes(c *gin.Context) {
+
+	entries, err := h.handHome.GetAllNotice(c.Request.Context())
+	if err != nil {
+		newErrorResponse(c, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	c.JSON(http.StatusOK, map[string]interface{}{
+		"data": entries,
+	})
 }
