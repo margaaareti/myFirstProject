@@ -6,6 +6,7 @@ import (
 )
 
 const CtxUserKey = "user"
+const CtxUserName = "name"
 
 type UseCase interface {
 	SignUp(ctx context.Context, user models.User2) (uint64, error)

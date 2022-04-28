@@ -57,7 +57,7 @@ func (r *AuthPostgres) GetUser(ctx context.Context, username, password string) (
 
 	newUser := new(models.User2)
 
-	query := fmt.Sprintf(`SELECT Id,username FROM %s WHERE username = '%s' AND password = '%s'`, repository.UserTable, username, password)
+	query := fmt.Sprintf(`SELECT Id,name,surname,patronymic FROM %s WHERE username = '%s' AND password = '%s'`, repository.UserTable, username, password)
 	if err := pgxscan.Get(ctx, r.db, newUser, query); err != nil {
 		return nil, errors.New("That user is not found")
 	}

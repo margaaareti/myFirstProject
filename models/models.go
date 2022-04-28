@@ -9,11 +9,13 @@ type User struct {
 }
 
 type User2 struct {
-	Id       uint64 `form:"id"   db:"id"`
-	Name     string `form:"name"`
-	Username string `form:"username"`
-	Password string `form:"password"`
-	Email    string `form:"email"`
+	Id         uint64 `form:"id"   db:"id"`
+	Name       string `form:"name"`
+	Surname    string `form:"name"`
+	Patronymic string `form:"patronymic"`
+	Username   string `form:"username"`
+	Password   string `form:"password"`
+	Email      string `form:"email"`
 }
 
 type Student struct {

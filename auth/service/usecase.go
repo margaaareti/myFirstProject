@@ -24,6 +24,8 @@ const (
 type AuthClaims struct {
 	jwt.StandardClaims
 	Username  string    `json:"username"`
+	Name      string    `json:"name"`
+	Surname   string    `json:"surname"`
 	UserID    uint64    `json:"userID"`
 	TokenUUID uuid.UUID `json:"access_uuid"`
 }

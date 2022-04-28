@@ -12,6 +12,7 @@ import (
 const (
 	studentTable = "students"
 	noteTable    = "notes"
+	userTable    = "users"
 )
 
 type Execute struct {
@@ -46,7 +47,7 @@ func (s *StudentRepo) PullAllNotice(ctx context.Context) ([]models.Student, erro
 
 	var notes []models.Student
 
-	query := fmt.Sprintf("SELECT id,name,surname,patronymic,isu_number,added_by FROM %s", studentTable)
+	query := fmt.Sprintf("SELECT id,name,surname,patronymic,isu_number,title,description FROM %s ", studentTable)
 	err := pgxscan.Select(ctx, s.db, &notes, query)
 	if err != nil {
 		return nil, err
