@@ -20,15 +20,34 @@ func NewHomeHandler(handHome mainpage.HomePage, auth auth.UseCase) *HomeHandler 
 }
 
 func (h *HomeHandler) ShowPage(c *gin.Context) {
-	User, ok := c.Get(auth.CtxUserKey)
+	UserId, ok := c.Get(auth.CtxUserId)
 	if !ok {
 		newErrorResponse(c, 401, "Необходима авторизация")
-	} else {
-		c.HTML(http.StatusOK, "home.html", gin.H{
-			"Name": User,
-		})
-
+		return
 	}
+	UserName, ok := c.Get(auth.CtxUserName)
+	if !ok {
+		newErrorResponse(c, 401, "Необходима авторизация")
+		return
+	}
+	UserSur, ok := c.Get(auth.CtxUserSurname)
+	if !ok {
+		newErrorResponse(c, 401, "Необходима авторизация")
+		return
+	}
+
+	//UserName, ok2 := c.Get(auth.CtxUserName)
+	//if !ok2 {
+	//	newErrorResponse(c, 401, "Необходима авторизация aaaaaaaaaaaaa")
+	//	return
+	//}
+
+	c.HTML(http.StatusOK, "home.html", gin.H{
+		"Id":      UserId,
+		"Name":    UserName,
+		"Surname": UserSur,
+	})
+
 }
 
 func (h *HomeHandler) LogOut(c *gin.Context) {

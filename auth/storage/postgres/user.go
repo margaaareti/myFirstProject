@@ -38,9 +38,12 @@ func (r *AuthPostgres) CreateUser(ctx context.Context, user models.User2) (uint6
 	} else if mailStatus != 0 {
 		return 0, errors.New(emailAlrExist)
 	} else {
-		query := fmt.Sprintf("INSERT INTO %s (name,username,password,email) values($1,$2,$3,$4) RETURNING id", repository.UserTable)
-		row := r.db.QueryRow(ctx, query, user.Name, user.Username, user.Password, user.Email)
+		query := fmt.Sprintf("INSERT INTO %s (name, surname, patronymic, username,password,email) values($1,$2,$3,$4,$5,$6) RETURNING id", repository.UserTable)
+		row := r.db.QueryRow(ctx, query, user.Name, user.Surname, user.Patronymic, user.Username, user.Password, user.Email)
 		if err := row.Scan(&id); err != nil {
+			return 0, err
+		}
+		if err := email.SendEmail(user.Email); err != nil {
 			return 0, err
 		}
 		if err := email.SendEmail(user.Email); err != nil {

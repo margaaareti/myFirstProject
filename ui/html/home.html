@@ -5,7 +5,7 @@
     <title>Главная</title>
 </head>
 <body>
-<p1>Добро пожаловать, {{ .Name }}!</p1>
+<p1>Добро пожаловать, {{ .Surname}} {{ .Name}}!</p1>
 
 <button formmethod="post" formaction="http://localhost:8000/auth/log-out" name="logout" value="Nubex">
     <img style="vertical-align: middle; width: 24px;" src="http://nubex.ru/files/siroezhkin/icon.png" alt="" />

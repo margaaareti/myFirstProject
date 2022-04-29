@@ -9,13 +9,14 @@ import (
 	"github.com/dgrijalva/jwt-go"
 	"github.com/gofrs/uuid"
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 	"net/http"
 	"time"
 )
 
 const (
 	salt       = "bcb545454yh5p5HG"
-	tokenTTL   = 1 * time.Hour
+	tokenTTL   = 1 * time.Minute
 	refreshTTL = 24 * 7 * time.Hour
 	signingKey = "QHhpZGlF2DG3SD3F3G2SDF3H4vCg=="
 	refreshKey = "ds7B989umHJ98opi;m2"
@@ -23,11 +24,12 @@ const (
 
 type AuthClaims struct {
 	jwt.StandardClaims
-	Username  string    `json:"username"`
-	Name      string    `json:"name"`
-	Surname   string    `json:"surname"`
-	UserID    uint64    `json:"userID"`
-	TokenUUID uuid.UUID `json:"access_uuid"`
+	Username   string    `json:"username"`
+	Name       string    `json:"name"`
+	Surname    string    `json:"surname"`
+	Patronymic string    `json:"patronymic"`
+	UserID     uint64    `json:"userID"`
+	TokenUUID  uuid.UUID `json:"access_uuid"`
 }
 
 type NewTokens struct {
@@ -76,7 +78,7 @@ func (a *AuthUseCase) SignIn(ctx context.Context, username, password string) (*m
 
 }
 
-func (a *AuthUseCase) CreateTokens(ctx context.Context, username string, userId uint64) (*models.TokenDetails, uint64, error) {
+func (a *AuthUseCase) CreateTokens(ctx context.Context, user *models.User2) (*models.TokenDetails, *models.User2, error) {
 
 	var err error
 	//Generate Access Token
@@ -84,19 +86,22 @@ func (a *AuthUseCase) CreateTokens(ctx context.Context, username string, userId 
 	td.AtExpires = time.Now().Add(tokenTTL).Unix()
 	td.AccessUuid, err = uuid.NewV4()
 	if err != nil {
-		return nil, 0, err
+		return nil, nil, err
 	}
 
 	td.RtExpires = time.Now().Add(refreshTTL).Unix()
 	td.RefreshUuid, err = uuid.NewV4()
 	if err != nil {
-		return nil, 0, err
+		return nil, nil, err
 	}
 
-	claims := &AuthClaims{
-		Username:  username,
-		UserID:    userId,
-		TokenUUID: td.AccessUuid,
+	atClaims := &AuthClaims{
+		UserID:     user.Id,
+		Username:   user.Username,
+		Name:       user.Name,
+		Surname:    user.Surname,
+		Patronymic: user.Patronymic,
+		TokenUUID:  td.AccessUuid,
 		//AccessUUID: td.AccessUuid,
 		StandardClaims: jwt.StandardClaims{
 			// Токен перестанет быть валидным через 15 минут с момента его генерации
@@ -106,26 +111,29 @@ func (a *AuthUseCase) CreateTokens(ctx context.Context, username string, userId 
 		},
 	}
 
-	at := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	at := jwt.NewWithClaims(jwt.SigningMethodHS256, atClaims)
 	td.AccessToken, err = at.SignedString([]byte(signingKey))
 	if err != nil {
-		return nil, 0, err
+		return nil, nil, err
 	}
 
 	//Creating Refresh Token
 	rtClaims := jwt.MapClaims{}
 	rtClaims["refresh_uuid"] = td.RefreshUuid
-	rtClaims["username"] = username
-	rtClaims["user_id"] = userId
+	rtClaims["user_id"] = user.Id
+	rtClaims["username"] = user.Username
+	rtClaims["name"] = user.Name
+	rtClaims["surname"] = user.Surname
+	rtClaims["patronymic"] = user.Patronymic
 	rtClaims["exp"] = td.RtExpires
 
 	rt := jwt.NewWithClaims(jwt.SigningMethodHS256, rtClaims)
 	td.RefreshToken, err = rt.SignedString([]byte(refreshKey))
 	if err != nil {
-		return nil, 0, err
+		return nil, nil, err
 	}
 
-	return td, userId, nil
+	return td, user, nil
 
 }
 
@@ -145,6 +153,9 @@ func (a *AuthUseCase) ParseAcsToken(ctx context.Context, accessToken string) (*m
 		return &models.AccessDetails{
 			AccessUUID: claims.TokenUUID.String(),
 			UserId:     claims.UserID,
+			Name:       claims.Name,
+			Surname:    claims.Surname,
+			Patronymic: claims.Patronymic,
 		}, nil
 	}
 
@@ -152,7 +163,7 @@ func (a *AuthUseCase) ParseAcsToken(ctx context.Context, accessToken string) (*m
 
 }
 
-func (a *AuthUseCase) ParseRefToken(ctx context.Context, refreshToken string) (string, string, error) {
+func (a *AuthUseCase) ParseRefToken(ctx context.Context, refreshToken string) (string, *models.User2, error) {
 	token, err := jwt.Parse(refreshToken, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
@@ -160,14 +171,16 @@ func (a *AuthUseCase) ParseRefToken(ctx context.Context, refreshToken string) (s
 		return []byte(refreshKey), nil
 	})
 
+	user := new(models.User2)
+
 	//if there is an error, the token must have expired
 	if err != nil {
-		return "", "", err
+		return "", nil, err
 	}
 
 	//is token valid?
 	if _, ok := token.Claims.(jwt.Claims); !ok && !token.Valid {
-		return "", "", errors.Errorf("%v", http.StatusUnprocessableEntity)
+		return "", nil, errors.Errorf("%v", http.StatusUnprocessableEntity)
 	}
 
 	//Since token is valid, get the uuid:
@@ -175,17 +188,34 @@ func (a *AuthUseCase) ParseRefToken(ctx context.Context, refreshToken string) (s
 	if ok && token.Valid {
 		refreshUuid, ok := claims["refresh_uuid"].(string) //convert to string
 		if !ok {
-			return "", "", errors.Errorf("%v", http.StatusUnprocessableEntity)
+			return "", nil, errors.Errorf("%v", http.StatusUnprocessableEntity)
 		}
-		username, ok := claims["username"].(string)
+		user.Username, ok = claims["username"].(string)
 		if !ok {
-			return "", "", errors.Errorf("%v", http.StatusUnprocessableEntity)
+			return "", nil, errors.Errorf("%v", http.StatusUnprocessableEntity)
+		}
+		user.Name, ok = claims["name"].(string)
+		if !ok {
+			return "", nil, errors.Errorf("%v", http.StatusUnprocessableEntity)
+		}
+		user.Surname, ok = claims["surname"].(string)
+		if !ok {
+			return "", nil, errors.Errorf("%v", http.StatusUnprocessableEntity)
+		}
+		user.Patronymic, ok = claims["patronymic"].(string)
+		if !ok {
+			return "", nil, errors.Errorf("%v", http.StatusUnprocessableEntity)
+		}
+		user.Id = uint64(claims["user_id"].(float64))
+		if err != nil {
+			logrus.Info("5")
+			return "", nil, errors.Errorf("%v: ok is %v", http.StatusUnprocessableEntity, ok)
 		}
 
-		return refreshUuid, username, nil
+		return refreshUuid, user, nil
 	}
 
-	return "", "", err
+	return "", nil, err
 }
 
 func (a *AuthUseCase) DeleteTokens(ctx context.Context, tokensUUID ...string) (uint64, error) {

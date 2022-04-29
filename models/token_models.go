@@ -15,4 +15,7 @@ type AccessDetails struct {
 	AccessUUID  string
 	RefreshUUID string
 	UserId      uint64
+	Name        string
+	Surname     string
+	Patronymic  string
 }

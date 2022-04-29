@@ -63,9 +63,9 @@ func (h *Handler) SignIn(c *gin.Context) {
 		return
 	}
 
-	token, id, err := h.useCase.CreateTokens(c.Request.Context(), user.Username, user.Id)
+	token, data, err := h.useCase.CreateTokens(c.Request.Context(), user)
 
-	saveErr := h.useCase.CreateAuth(c.Request.Context(), id, token)
+	saveErr := h.useCase.CreateAuth(c.Request.Context(), data.Id, token)
 	if saveErr != nil {
 		newErrorResponse(c, http.StatusBadRequest, err.Error())
 		return

@@ -45,7 +45,8 @@ func (m *AuthMiddleware) Handle(c *gin.Context) {
 	ad, err := m.useCase.ParseAcsToken(c.Request.Context(), aToken)
 	if err != nil {
 
-		uuid, username, err := m.useCase.ParseRefToken(c.Request.Context(), rToken)
+		uuid, user, err := m.useCase.ParseRefToken(c.Request.Context(), rToken)
+		//Info(user.Name)
 		if err != nil {
 			newErrorResponse(c, 401, err.Error())
 			return
@@ -56,9 +57,10 @@ func (m *AuthMiddleware) Handle(c *gin.Context) {
 			newErrorResponse(c, 401, delErr.Error())
 			return
 		}
-		tokens, id, err := m.useCase.CreateTokens(c.Request.Context(), username, deletedId)
 
-		saveErr := m.useCase.CreateAuth(c.Request.Context(), id, tokens)
+		tokens, userData, err := m.useCase.CreateTokens(c.Request.Context(), user)
+
+		saveErr := m.useCase.CreateAuth(c.Request.Context(), user.Id, tokens)
 		if saveErr != nil {
 			newErrorResponse(c, http.StatusBadRequest, err.Error())
 			return
@@ -67,8 +69,10 @@ func (m *AuthMiddleware) Handle(c *gin.Context) {
 		c.SetCookie("AccessToken", tokens.AccessToken, 60*60*24, "/", "localhost", false, true)
 		c.SetCookie("RefreshToken", tokens.RefreshToken, 60*60*24, "/", "localhost", false, true)
 
-		c.Set(auth.CtxUserKey, id)
-		logrus.Info(err)
+		c.Set(auth.CtxUserId, userData.Id)
+		c.Set(auth.CtxUserName, userData.Name)
+		c.Set(auth.CtxUserSurname, userData.Surname)
+		c.Set(auth.CtxUserPatronymic, userData.Patronymic)
 
 	} else if err == auth.ErrInvalidAccessToken {
 		status := http.StatusInternalServerError
@@ -83,13 +87,17 @@ func (m *AuthMiddleware) Handle(c *gin.Context) {
 			return
 		}
 
-		c.Set(auth.CtxUserKey, userID)
+		c.Set(auth.CtxUserId, userID)
+		c.Set(auth.CtxUserName, ad.Name)
+		c.Set(auth.CtxUserSurname, ad.Surname)
+		c.Set(auth.CtxUserPatronymic, ad.Patronymic)
+
 	}
 
 }
 
 func GetUserId(c *gin.Context) (uint64, error) {
-	id, ok := c.Get(auth.CtxUserKey)
+	id, ok := c.Get(auth.CtxUserId)
 	logrus.Info(id)
 	if !ok {
 		return 0, errors.New("user id not found")
@@ -106,4 +114,8 @@ func GetUserId(c *gin.Context) (uint64, error) {
 
 	return u64, nil
 
+}
+
+func CtxVar(c *gin.Context, key string, value interface{}) {
+	c.Set(key, value)
 }
