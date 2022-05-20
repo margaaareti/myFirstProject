@@ -1,5 +1,7 @@
 package models
 
+import "time"
+
 type User struct {
 	Id       int    `json:"-"   db:"id"`
 	Name     string `json:"name" binding:"required"`
@@ -19,14 +21,13 @@ type User2 struct {
 }
 
 type Student struct {
-	Id          uint64 `json:"id" db:"id"`
-	Name        string `json:"name" db:"name" binding:"required"`
-	Surname     string `json:"surname" db:"surname" binding:"required"`
-	Patronymic  string `json:"patronymic" db:"patronymic"`
-	IsuNumber   string `json:"number" db:"isu_number" binding:"required"`
-	AddedBy     string `json:"added-by" db:"added_by"`
-	Title       string `json:"title" db:"title" binding:"required"`
-	Description string `json:"description" db:"description"`
-
-	Time string `json:"time" db:"reg_date"`
+	Id          uint64    `json:"id" db:"id"`
+	Name        string    `json:"name" db:"name" binding:"required"`
+	Surname     string    `json:"surname" db:"surname" binding:"required"`
+	Patronymic  string    `json:"patronymic" db:"patronymic"`
+	IsuNumber   string    `json:"number" db:"isu_number" binding:"required"`
+	AddedBy     uint64    `json:"added-by" db:"added_by"`
+	Title       string    `json:"title" db:"title" binding:"required"`
+	Description string    `json:"description" db:"description"`
+	Time        time.Time `json:"time" db:"reg_date"`
 }

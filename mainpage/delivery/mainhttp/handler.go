@@ -6,8 +6,13 @@ import (
 	"Test_derictory/mainpage"
 	"Test_derictory/models"
 	"github.com/gin-gonic/gin"
+	"github.com/sirupsen/logrus"
 	"net/http"
 )
+
+type Id struct {
+	id int `json:"id"`
+}
 
 type HomeHandler struct {
 	handHome mainpage.HomePage
@@ -88,18 +93,22 @@ func (h *HomeHandler) CreateEntry(c *gin.Context) {
 
 	userId, err := authhttp.GetUserId(c)
 	if err != nil {
+		logrus.Info("1")
+		logrus.Infof("user id is %s", userId)
 		newErrorResponse(c, http.StatusUnauthorized, err.Error())
 		return
 	}
 
 	var input models.Student
 	if err := c.BindJSON(&input); err != nil {
+		logrus.Info("2")
 		newErrorResponse(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	id, err := h.handHome.AddStudent(c.Request.Context(), userId, input)
 	if err != nil {
+		logrus.Info("33")
 		newErrorResponse(c, http.StatusBadRequest, err.Error())
 		return
 	}
@@ -109,7 +118,7 @@ func (h *HomeHandler) CreateEntry(c *gin.Context) {
 	})
 }
 
-func (h *HomeHandler) AllNotes(c *gin.Context) {
+func (h *HomeHandler) GetAllNotes(c *gin.Context) {
 
 	entries, err := h.handHome.GetAllNotice(c.Request.Context())
 	if err != nil {
@@ -119,5 +128,35 @@ func (h *HomeHandler) AllNotes(c *gin.Context) {
 
 	c.JSON(http.StatusOK, map[string]interface{}{
 		"data": entries,
+	})
+}
+
+func (h *HomeHandler) GetById(c *gin.Context) {
+
+}
+
+func (h *HomeHandler) DeleteNoteById(c *gin.Context) {
+
+	/*id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		newErrorResponse(c, http.StatusBadRequest, "invalid id param")
+		return
+	}*/
+
+	var input Id
+	if err := c.BindJSON(&input); err != nil {
+		logrus.Info("2")
+		newErrorResponse(c, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	err := h.handHome.DeleteNoticeByID(c.Request.Context(), input.id)
+	if err != nil {
+		newErrorResponse(c, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	c.JSON(http.StatusOK, map[string]interface{}{
+		"data": "Ok",
 	})
 }

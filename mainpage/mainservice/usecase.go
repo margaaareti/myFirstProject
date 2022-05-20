@@ -21,3 +21,7 @@ func (h *HomeUseCase) AddStudent(ctx context.Context, userId uint64, student mod
 func (h *HomeUseCase) GetAllNotice(ctx context.Context) ([]models.Student, error) {
 	return h.CrudPage.PullAllNotice(ctx)
 }
+
+func (h *HomeUseCase) DeleteNoticeByID(ctx context.Context, Id int) error {
+	return h.CrudPage.DeleteNotice(ctx, Id)
+}

@@ -47,10 +47,20 @@ func (s *StudentRepo) PullAllNotice(ctx context.Context) ([]models.Student, erro
 
 	var notes []models.Student
 
-	query := fmt.Sprintf("SELECT id,name,surname,patronymic,isu_number,title,description FROM %s ", studentTable)
+	query := fmt.Sprintf("SELECT id,name,surname,patronymic, added_by, isu_number,title,description,reg_date FROM %s ", studentTable)
 	err := pgxscan.Select(ctx, s.db, &notes, query)
 	if err != nil {
 		return nil, err
 	}
 	return notes, nil
+}
+
+func (s *StudentRepo) DeleteNotice(ctx context.Context, Id int) error {
+
+	query := fmt.Sprintf(`DELETE FROM %s WHERE id =$1`, studentTable)
+	_, err := s.db.Exec(ctx, query, Id)
+	if err != nil {
+		return err
+	}
+	return nil
 }

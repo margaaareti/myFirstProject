@@ -44,17 +44,17 @@ func (m *AuthMiddleware) Handle(c *gin.Context) {
 
 	ad, err := m.useCase.ParseAcsToken(c.Request.Context(), aToken)
 	if err != nil {
-
+		
 		uuid, user, err := m.useCase.ParseRefToken(c.Request.Context(), rToken)
-		//Info(user.Name)
 		if err != nil {
 			newErrorResponse(c, 401, err.Error())
 			return
 		}
+		logrus.Infof("uuid is: %s", uuid)
 
 		deletedId, delErr := m.useCase.DeleteTokens(c.Request.Context(), uuid)
 		if delErr != nil || deletedId == 0 {
-			newErrorResponse(c, 401, delErr.Error())
+			newErrorResponse(c, 401, "ауф")
 			return
 		}
 
@@ -69,7 +69,9 @@ func (m *AuthMiddleware) Handle(c *gin.Context) {
 		c.SetCookie("AccessToken", tokens.AccessToken, 60*60*24, "/", "localhost", false, true)
 		c.SetCookie("RefreshToken", tokens.RefreshToken, 60*60*24, "/", "localhost", false, true)
 
-		c.Set(auth.CtxUserId, userData.Id)
+		idStr := strconv.Itoa(int(userData.Id))
+
+		c.Set(auth.CtxUserId, idStr)
 		c.Set(auth.CtxUserName, userData.Name)
 		c.Set(auth.CtxUserSurname, userData.Surname)
 		c.Set(auth.CtxUserPatronymic, userData.Patronymic)
@@ -98,14 +100,14 @@ func (m *AuthMiddleware) Handle(c *gin.Context) {
 
 func GetUserId(c *gin.Context) (uint64, error) {
 	id, ok := c.Get(auth.CtxUserId)
-	logrus.Info(id)
+	logrus.Infof("Get user id from context: %v", id)
 	if !ok {
 		return 0, errors.New("user id not found")
 	}
 	//Приводим id в соответствубщему типу
 	idStr, ok := id.(string)
 	if !ok {
-		return 0, errors.New("user id not found")
+		return 0, errors.New("user id is not a type of string")
 	}
 	u64, err := strconv.ParseUint(idStr, 10, 32)
 	if err != nil {
