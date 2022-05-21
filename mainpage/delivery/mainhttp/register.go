@@ -13,6 +13,6 @@ func RegisterHTTPEndPoints(c *gin.RouterGroup, crd mainpage.HomePage, auth auth.
 	c.POST("/log-out", cr.LogOut)
 	c.POST("/home/add", cr.CreateEntry)
 	c.GET("/home/getAll", cr.GetAllNotes)
-	c.POST("/home/delete", cr.DeleteNoteById)
+	c.POST("/home/delete/:id", cr.DeleteNoteById)
 
 }

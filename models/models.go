@@ -26,7 +26,7 @@ type Student struct {
 	Surname     string    `json:"surname" db:"surname" binding:"required"`
 	Patronymic  string    `json:"patronymic" db:"patronymic"`
 	IsuNumber   string    `json:"number" db:"isu_number" binding:"required"`
-	AddedBy     uint64    `json:"added-by" db:"added_by"`
+	AddedBy     string    `json:"added-by" db:"added_by"`
 	Title       string    `json:"title" db:"title" binding:"required"`
 	Description string    `json:"description" db:"description"`
 	Time        time.Time `json:"time" db:"reg_date"`

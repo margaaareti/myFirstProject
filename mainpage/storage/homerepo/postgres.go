@@ -7,6 +7,7 @@ import (
 	"github.com/georgysavva/scany/pgxscan"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/sirupsen/logrus"
+	"strconv"
 )
 
 const (
@@ -32,8 +33,10 @@ func (s *StudentRepo) CreateStudent(ctx context.Context, userId uint64, student 
 
 	var id uint64
 
+	idStr := strconv.Itoa(int(userId))
+
 	query := fmt.Sprintf("INSERT INTO %s (name, surname, patronymic,isu_number,added_by,title,description) values ($1,$2,$3,$4,$5,$6,$7) RETURNING id", studentTable)
-	row := s.db.QueryRow(ctx, query, student.Name, student.Surname, student.Patronymic, student.IsuNumber, userId, student.Title, student.Description)
+	row := s.db.QueryRow(ctx, query, student.Name, student.Surname, student.Patronymic, student.IsuNumber, idStr, student.Title, student.Description)
 	if err := row.Scan(&id); err != nil {
 		return 0, err
 	}
@@ -57,7 +60,7 @@ func (s *StudentRepo) PullAllNotice(ctx context.Context) ([]models.Student, erro
 
 func (s *StudentRepo) DeleteNotice(ctx context.Context, Id int) error {
 
-	query := fmt.Sprintf(`DELETE FROM %s WHERE id =$1`, studentTable)
+	query := fmt.Sprintf(`DELETE FROM %s WHERE id=$1`, studentTable)
 	_, err := s.db.Exec(ctx, query, Id)
 	if err != nil {
 		return err

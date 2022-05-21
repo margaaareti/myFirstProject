@@ -8,10 +8,11 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 	"net/http"
+	"strconv"
 )
 
 type Id struct {
-	id int `json:"id"`
+	Id int `json:"id"`
 }
 
 type HomeHandler struct {
@@ -137,20 +138,20 @@ func (h *HomeHandler) GetById(c *gin.Context) {
 
 func (h *HomeHandler) DeleteNoteById(c *gin.Context) {
 
-	/*id, err := strconv.Atoi(c.Param("id"))
+	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		newErrorResponse(c, http.StatusBadRequest, "invalid id param")
 		return
-	}*/
+	}
 
-	var input Id
+	/*var input Id
 	if err := c.BindJSON(&input); err != nil {
 		logrus.Info("2")
 		newErrorResponse(c, http.StatusBadRequest, err.Error())
 		return
-	}
+	}*/
 
-	err := h.handHome.DeleteNoticeByID(c.Request.Context(), input.id)
+	err = h.handHome.DeleteNoticeByID(c.Request.Context(), id)
 	if err != nil {
 		newErrorResponse(c, http.StatusBadRequest, err.Error())
 		return
