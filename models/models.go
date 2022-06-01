@@ -1,6 +1,9 @@
 package models
 
-import "time"
+import (
+	"github.com/pkg/errors"
+	"time"
+)
 
 type User struct {
 	Id       int    `json:"-"   db:"id"`
@@ -30,4 +33,17 @@ type Student struct {
 	Title       string    `json:"title" db:"title" binding:"required"`
 	Description string    `json:"description" db:"description"`
 	Time        time.Time `json:"time" db:"reg_date"`
+}
+
+type UpdateStudentInput struct {
+	Title       *string `json:"title"`
+	Description *string `json:"description"`
+	//Done        *bool   `json:"done"`
+}
+
+func (i UpdateStudentInput) Validate() error {
+	if i.Title == nil && i.Description == nil /*&& i.Done == nil*/ {
+		return errors.New("update structures has no value")
+	}
+	return nil
 }

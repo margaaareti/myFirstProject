@@ -101,6 +101,10 @@ func (h *HomeHandler) CreateEntry(c *gin.Context) {
 	}
 
 	var input models.Student
+	if len(input.IsuNumber) != 6 {
+		newErrorResponse(c, http.StatusBadRequest, "Неккоректный номер ису")
+		return
+	}
 	if err := c.BindJSON(&input); err != nil {
 		logrus.Info("2")
 		newErrorResponse(c, http.StatusBadRequest, err.Error())
@@ -133,7 +137,25 @@ func (h *HomeHandler) GetAllNotes(c *gin.Context) {
 }
 
 func (h *HomeHandler) GetById(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		newErrorResponse(c, http.StatusBadRequest, "invalid id param")
+		return
+	}
 
+	logrus.Infof("id is %v", id)
+
+	var form models.Student
+
+	form, err = h.handHome.GetById(c.Request.Context(), uint64(id))
+	if err != nil {
+		newErrorResponse(c, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	c.JSON(http.StatusOK, map[string]interface{}{
+		"data": form,
+	})
 }
 
 func (h *HomeHandler) DeleteNoteById(c *gin.Context) {
@@ -144,13 +166,6 @@ func (h *HomeHandler) DeleteNoteById(c *gin.Context) {
 		return
 	}
 
-	/*var input Id
-	if err := c.BindJSON(&input); err != nil {
-		logrus.Info("2")
-		newErrorResponse(c, http.StatusBadRequest, err.Error())
-		return
-	}*/
-
 	err = h.handHome.DeleteNoticeByID(c.Request.Context(), id)
 	if err != nil {
 		newErrorResponse(c, http.StatusBadRequest, err.Error())
@@ -160,4 +175,32 @@ func (h *HomeHandler) DeleteNoteById(c *gin.Context) {
 	c.JSON(http.StatusOK, map[string]interface{}{
 		"data": "Ok",
 	})
+}
+
+func (h *HomeHandler) UpdateItem(c *gin.Context) {
+	userId, err := authhttp.GetUserId(c) //Функция определена в middleware.go
+	if err != nil {
+		newErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		newErrorResponse(c, http.StatusBadRequest, "invalid id param")
+		return
+	}
+
+	var input models.UpdateStudentInput
+	if err := c.BindJSON(&input); err != nil {
+		newErrorResponse(c, http.StatusBadRequest, err.Error())
+		return
+	}
+	if err := h.handHome.UpdateEntryUseCase(c.Request.Context(), userId, uint64(id), input); err != nil {
+		newErrorResponse(c, http.StatusBadRequest, err.Error())
+		return
+	}
+	c.JSON(http.StatusOK, map[string]interface{}{
+		"Status": "Ok",
+	})
+
 }

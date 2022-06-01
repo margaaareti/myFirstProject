@@ -18,7 +18,7 @@ CREATE TABLE students
     name    varchar(255) not null,
     surname varchar(255) not null,
     patronymic varchar(255),
-    isu_number varchar(255) not null unique ,
+    isu_number varchar(6) not null unique ,
     added_by int references users (id) on delete cascade not null,
     title varchar(255) not null,
     description varchar(255),

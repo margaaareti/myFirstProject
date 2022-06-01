@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"github.com/georgysavva/scany/pgxscan"
 	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"strconv"
+	"strings"
 )
 
 const (
@@ -66,4 +68,42 @@ func (s *StudentRepo) DeleteNotice(ctx context.Context, Id int) error {
 		return err
 	}
 	return nil
+}
+
+func (s *StudentRepo) PullById(ctx context.Context, id uint64) (models.Student, error) {
+	var student models.Student
+	query := fmt.Sprintf(`SELECT * FROM %s WHERE id = %v`, studentTable, id)
+	if err := pgxscan.Get(ctx, s.db, &student, query); err != nil {
+		return student, errors.New("That student is not found")
+	}
+
+	return student, nil
+}
+
+func (s *StudentRepo) UpdateEntry(ctx context.Context, userId, studentId uint64, input models.UpdateStudentInput) error {
+
+	setValues := make([]string, 0)
+	args := make([]interface{}, 0)
+	argId := 1
+
+	if input.Title != nil {
+		setValues = append(setValues, fmt.Sprintf("title=$%d", argId))
+		args = append(args, *input.Title)
+		argId++
+	}
+
+	if input.Description != nil {
+		setValues = append(setValues, fmt.Sprintf("description=$%d", argId))
+		args = append(args, *input.Description)
+		argId++
+	}
+
+	setQuery := strings.Join(setValues, ", ")
+
+	query := fmt.Sprintf("UPDATE %s SET %s WHERE id= %d", studentTable, setQuery, studentId)
+
+	//args = append(args, studentId)
+
+	_, err := s.db.Exec(ctx, query, args...)
+	return err
 }
