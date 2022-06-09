@@ -10,6 +10,7 @@ import (
 	"github.com/gofrs/uuid"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
+	"io"
 	"net/http"
 	"time"
 )
@@ -234,6 +235,9 @@ func (a *AuthUseCase) LogOut(ctx context.Context, givenUUID ...string) (uint64, 
 
 	return a.stg.DeleteToken(ctx, givenUUID)
 
+}
+
+func (a *AuthUseCase) UploadImage(ctx context.Context, file io.Reader, size int64, contentType string) {
 }
 
 /*func (a *AuthUseCase) NewRefreshToken() (string, error) {

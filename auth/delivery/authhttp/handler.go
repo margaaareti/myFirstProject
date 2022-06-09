@@ -3,9 +3,17 @@ package authhttp
 import (
 	"Test_derictory/auth"
 	"Test_derictory/models"
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"net/http"
 )
+
+const MAX_UPLOAD_SIZE = 10 << 20
+
+var IMAGE_TYPES = map[string]interface{}{
+	"image/jpeg": nil,
+	"image/png":  nil,
+}
 
 type Handler struct {
 	useCase auth.UseCase
@@ -80,5 +88,41 @@ func (h *Handler) SignIn(c *gin.Context) {
 	})
 
 	c.Redirect(303, "/api/home")
+
+}
+
+func (h *Handler) UploadFile(c *gin.Context) {
+
+	err := c.Request.ParseMultipartForm(MAX_UPLOAD_SIZE) //10mb
+	if err != nil {
+		newErrorResponse(c, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	file, fileHeader, err := c.Request.FormFile("myFile")
+	if err != nil {
+		newErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("Error Retrieving file from form-data:%v", err.Error()))
+		return
+	}
+
+	defer file.Close()
+
+	buffer := make([]byte, fileHeader.Size)
+	file.Read(buffer)
+	fileType := http.DetectContentType(buffer)
+	fmt.Println(fileType)
+
+	//Validate file type
+	if _, ex := IMAGE_TYPES[fileType]; !ex {
+		newErrorResponse(c, http.StatusBadRequest, "Неверный тип файла")
+		return
+	}
+
+	status := fmt.Sprintf("File has been uploaded: %+v", fileHeader.Filename)
+	c.JSON(http.StatusOK, map[string]interface{}{
+		"status": status,
+		"size":   fileHeader.Size,
+		"name":   fileHeader.Header,
+	})
 
 }

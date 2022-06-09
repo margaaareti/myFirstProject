@@ -44,7 +44,7 @@ func (m *AuthMiddleware) Handle(c *gin.Context) {
 
 	ad, err := m.useCase.ParseAcsToken(c.Request.Context(), aToken)
 	if err != nil {
-		
+
 		uuid, user, err := m.useCase.ParseRefToken(c.Request.Context(), rToken)
 		if err != nil {
 			newErrorResponse(c, 401, err.Error())
@@ -116,8 +116,4 @@ func GetUserId(c *gin.Context) (uint64, error) {
 
 	return u64, nil
 
-}
-
-func CtxVar(c *gin.Context, key string, value interface{}) {
-	c.Set(key, value)
 }

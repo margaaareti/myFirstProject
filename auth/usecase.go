@@ -3,6 +3,7 @@ package auth
 import (
 	"Test_derictory/models"
 	"context"
+	"io"
 )
 
 const CtxUserId = "userId"
@@ -19,4 +20,5 @@ type UseCase interface {
 	DeleteTokens(ctx context.Context, tokensUUID ...string) (uint64, error)
 	CreateAuth(ctx context.Context, userId uint64, td *models.TokenDetails) error
 	LogOut(ctx context.Context, givenUuid ...string) (uint64, error)
+	UploadImage(ctx context.Context, file io.Reader, size int64, contentType string)
 }

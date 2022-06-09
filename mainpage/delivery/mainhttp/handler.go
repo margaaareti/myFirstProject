@@ -11,10 +11,6 @@ import (
 	"strconv"
 )
 
-type Id struct {
-	Id int `json:"id"`
-}
-
 type HomeHandler struct {
 	handHome mainpage.HomePage
 	auth     auth.UseCase
@@ -204,3 +200,25 @@ func (h *HomeHandler) UpdateItem(c *gin.Context) {
 	})
 
 }
+
+/*func (h *HomeHandler) UploadFile(c *gin.Context) {
+
+err := c.Request.ParseMultipartForm(10 << 20) //10mb
+if err != nil {
+	newErrorResponse(c, http.StatusBadRequest, err.Error())
+	return
+}
+
+file, err := c.FormFile("myFile")
+if err != nil {
+	newErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("Error Retrieving file from form-data:%v", err.Error()))
+	return
+}
+
+status := fmt.Sprintf("File has been uploaded:%+v\n", file.Filename)
+c.JSON(http.StatusOK, map[string]interface{}{
+	"status":     status,
+	"size":       file.Size,
+	"mimeHeader": file.Header,
+})
+*/
